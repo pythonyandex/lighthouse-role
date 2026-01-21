@@ -1,0 +1,9 @@
+---
+# Lighthouse переменные
+lighthouse_repo: "https://github.com/VKCOM/lighthouse.git"
+lighthouse_dest: "/var/www/lighthouse"
+lighthouse_version: "master"
+lighthouse_local_dir: "/var/www/lighthouse"
+nginx_user: "www-data"
+
+# vars file for lighthouse

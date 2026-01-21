@@ -1,0 +1,97 @@
+---
+- name: NGINX | Install NGINX and dependencies
+  become: true
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - curl
+      - wget
+      - unzip
+      - git
+    state: present
+    update_cache: yes
+
+- name: NGINX | Create general config
+  become: true
+  ansible.builtin.template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Create lighthouse directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ lighthouse_local_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+
+- name: Check if Lighthouse already exists
+  ansible.builtin.stat:
+    path: "{{ lighthouse_local_dir }}/index.html"
+  register: lighthouse_exists
+
+- name: Download Lighthouse archive
+  ansible.builtin.get_url:
+    url: "https://github.com/VKCOM/lighthouse/archive/refs/heads/master.zip"
+    dest: /tmp/lighthouse.zip
+    mode: '0644'
+  when: not lighthouse_exists.stat.exists
+
+- name: Extract Lighthouse
+  become: true
+  ansible.builtin.unarchive:
+    src: /tmp/lighthouse.zip
+    dest: /tmp/
+    remote_src: yes
+    creates: /tmp/lighthouse-master/
+  when: not lighthouse_exists.stat.exists
+
+- name: Copy Lighthouse files to target directory
+  become: true
+  ansible.builtin.copy:
+    src: /tmp/lighthouse-master/
+    dest: "{{ lighthouse_local_dir }}"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    mode: '0755'
+    remote_src: yes
+  when: not lighthouse_exists.stat.exists
+
+- name: Set proper permissions for Lighthouse
+  become: true
+  ansible.builtin.file:
+    path: "{{ lighthouse_local_dir }}"
+    owner: "{{ nginx_user }}"
+    group: "{{ nginx_user }}"
+    recurse: yes
+
+- name: Configure Nginx for Lighthouse
+  become: true
+  ansible.builtin.template:
+    src: templates/lighthouse.conf.j2
+    dest: /etc/nginx/conf.d/lighthouse.conf
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Remove default nginx config
+  become: true
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Validate nginx configuration
+  become: true
+  ansible.builtin.shell: |
+    nginx -t
+  changed_when: false
+
+- name: Start and enable Nginx
+  become: true
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: yes

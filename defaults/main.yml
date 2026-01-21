@@ -1,0 +1,5 @@
+---
+lighthouse_repo: "https://github.com/VKCOM/lighthouse.git"
+lighthouse_dir: "/var/www/lighthouse"
+nginx_site_conf: "lighthouse.conf"
+##defaults file for lighthouse
